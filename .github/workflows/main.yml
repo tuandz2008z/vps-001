@@ -30,9 +30,12 @@ jobs:
       run: |
         echo "🚀 Đang khởi chạy Cloudflare Tunnel..."
         nohup cloudflared tunnel --protocol tcp --url tcp://localhost:22 --no-autoupdate > tunnel.log 2>&1 &
-        sleep 5
+        sleep 12
         echo "===== Nội dung tunnel.log ====="
-        cat tunnel.log | grep -Eo "tcp://[a-zA-Z0-9.-]+:[0-9]+"
+        cat tunnel.log
+        echo ""
+        echo "===== Link SSH Public ====="
+        grep -Eo "tcp://[a-zA-Z0-9.-]+:[0-9]+" tunnel.log || echo "❌ Không tìm thấy link, kiểm tra tunnel.log"
 
     - name: Keep VPS Alive
       run: |
