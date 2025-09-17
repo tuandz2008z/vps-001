@@ -1,60 +1,40 @@
-name: Free VPS GitHub + Cloudflare
+name: VPS Free via Cloudflare
 
 on:
-  workflow_dispatch: # Chạy thủ công
-  push:               # Chạy khi push code
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 350 # VPS chạy tối đa 6 tiếng
 
     steps:
-    # Bước 1: Checkout repo
-    - name: Checkout Repo
-      uses: actions/checkout@v3
-
-    # Bước 2: Update & cài gói cần thiết
-    - name: Update & Install Packages
+    - name: Update and install packages
       run: |
-        sudo apt update && sudo apt upgrade -y
-        sudo apt install curl wget git unzip tmux -y
-        echo "✅ Hệ thống đã sẵn sàng!"
+        sudo apt update && sudo apt install -y wget curl unzip openssh-server
 
-    # Bước 3: Cài đặt Cloudflare Tunnel
-    - name: Install Cloudflare Tunnel
+    - name: Create user tuan
       run: |
-        wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-        sudo dpkg -i cloudflared-linux-amd64.deb
-        echo "✅ Cloudflare Tunnel đã được cài đặt!"
-
-    # Bước 4: Cài SSH Server và tạo user tuan
-    - name: Setup SSH with custom user
-      run: |
-        sudo apt install openssh-server -y
-        sudo useradd -m -s /bin/bash tuan
+        sudo useradd -m tuan
         echo "tuan:tuan123" | sudo chpasswd
         sudo usermod -aG sudo tuan
-        sudo sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
         echo "AllowUsers tuan" | sudo tee -a /etc/ssh/sshd_config
         sudo service ssh restart
-        echo "✅ SSH đã sẵn sàng! Username: tuan | Password: tuan123"
+        echo "SSH sẵn sàng với username: tuan và password: tuan123"
 
-    # Bước 5: Chạy Cloudflare Tunnel để mở kết nối SSH
+    - name: Install Cloudflared
+      run: |
+        wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+        sudo dpkg -i cloudflared-linux-amd64.deb
+
     - name: Start Cloudflare Tunnel for SSH
       run: |
-        echo "🔄 Đang khởi chạy Cloudflare Tunnel..."
-        nohup cloudflared tunnel --url tcp://localhost:22 --no-autoupdate > tunnel.log 2>&1 &
-        sleep 8
-        echo "🔗 Địa chỉ SSH của bạn (copy đầy đủ dòng bên dưới để kết nối):"
-        cat tunnel.log | grep -o 'tcp://[0-9a-zA-Z\.\-]*trycloudflare.com:[0-9]*' || echo "⚠️ Không tìm thấy link, hãy xem nội dung log bên dưới:"
+        echo "🚀 Đang khởi chạy Cloudflare Tunnel..."
+        nohup cloudflared tunnel --protocol tcp --url tcp://localhost:22 --no-autoupdate > tunnel.log 2>&1 &
+        sleep 5
         echo "===== Nội dung tunnel.log ====="
-        cat tunnel.log
-        echo "=============================="
+        cat tunnel.log | grep -Eo "tcp://[a-zA-Z0-9.-]+:[0-9]+"
 
-    # Bước 6: Giữ VPS hoạt động trong 6 tiếng
     - name: Keep VPS Alive
       run: |
-        echo "⏳ VPS đang chạy trong 6 tiếng..."
-        tmux new -d -s keepalive 'while true; do sleep 30; done'
+        echo "VPS đang chạy trong 6 tiếng..."
         sleep 21600
