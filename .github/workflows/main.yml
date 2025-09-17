@@ -10,8 +10,10 @@ jobs:
     steps:
     - name: Update and install packages
       run: |
-        sudo apt update && sudo apt install -y wget curl unzip openssh-server xrdp xfce4 xfce4-goodies
+        sudo apt update
+        sudo apt install -y wget curl unzip openssh-server xrdp xfce4 xfce4-goodies
         sudo systemctl enable xrdp --now
+        echo "✅ XRDP đã được cài và khởi động!"
 
     - name: Create user tuan
       run: |
@@ -20,22 +22,27 @@ jobs:
         sudo usermod -aG sudo tuan
         echo "AllowUsers tuan" | sudo tee -a /etc/ssh/sshd_config
         sudo service ssh restart
-        echo "RDP sẵn sàng với username: tuan và password: tuan123"
+        echo "👤 User 'tuan' đã sẵn sàng! Username: tuan | Password: tuan123"
 
     - name: Install Cloudflared
       run: |
         wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
         sudo dpkg -i cloudflared-linux-amd64.deb
+        echo "🌐 Cloudflared đã được cài đặt!"
 
     - name: Start Cloudflare Tunnel for RDP
       run: |
         echo "🚀 Đang khởi chạy Cloudflare Tunnel (RDP)..."
-        nohup cloudflared tunnel --url tcp://localhost:3389 --protocol auto --no-autoupdate > tunnel.log 2>&1 &
-        sleep 5
+        # Chạy Cloudflare tunnel và forward port 3389
+        nohup cloudflared tunnel --url tcp://localhost:3389 --no-autoupdate > tunnel.log 2>&1 &
+        sleep 10
         echo "===== Nội dung tunnel.log ====="
-        cat tunnel.log | grep -Eo "tcp://[a-zA-Z0-9.-]+:[0-9]+"
+        cat tunnel.log
+        echo "===== Link Public để kết nối RDP ====="
+        # Tìm và in ra link *.trycloudflare.com
+        cat tunnel.log | grep -Eo "tcp://[a-zA-Z0-9.-]+\.trycloudflare\.com:[0-9]+"
 
     - name: Keep VPS Alive
       run: |
-        echo "VPS đang chạy trong 6 tiếng..."
+        echo "💻 VPS đang chạy trong 6 tiếng..."
         sleep 21600
