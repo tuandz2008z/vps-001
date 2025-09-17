@@ -29,8 +29,8 @@ jobs:
     - name: Start Cloudflare Tunnel for SSH
       run: |
         echo "🚀 Đang khởi chạy Cloudflare Tunnel..."
-        nohup cloudflared tunnel --protocol tcp --url tcp://localhost:22 --no-autoupdate > tunnel.log 2>&1 &
-        sleep 12
+        nohup cloudflared tunnel --no-autoupdate --protocol tcp --url tcp://localhost:22 > tunnel.log 2>&1 &
+        sleep 15
         echo "===== Nội dung tunnel.log ====="
         cat tunnel.log
         echo ""
