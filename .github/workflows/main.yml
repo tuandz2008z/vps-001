@@ -33,14 +33,21 @@ jobs:
     - name: Start Cloudflare Tunnel for RDP
       run: |
         echo "🚀 Đang khởi chạy Cloudflare Tunnel (RDP)..."
-        # Chạy Cloudflare tunnel và forward port 3389
+        # Khởi chạy tunnel trên port 3389 cho RDP
         nohup cloudflared tunnel --url tcp://localhost:3389 --no-autoupdate > tunnel.log 2>&1 &
         sleep 10
+
         echo "===== Nội dung tunnel.log ====="
         cat tunnel.log
+
         echo "===== Link Public để kết nối RDP ====="
-        # Tìm và in ra link *.trycloudflare.com
-        cat tunnel.log | grep -Eo "tcp://[a-zA-Z0-9.-]+\.trycloudflare\.com:[0-9]+"
+        # Lấy link *.trycloudflare.com từ log
+        LINK=$(grep -Eo "https://[a-zA-Z0-9.-]+\.trycloudflare\.com" tunnel.log | head -n 1)
+        echo "🌍 Public RDP Link: $LINK"
+        if [ -z "$LINK" ]; then
+          echo "❌ Không tìm thấy link public trong tunnel.log"
+          exit 1
+        fi
 
     - name: Keep VPS Alive
       run: |
