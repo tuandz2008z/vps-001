@@ -8,10 +8,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # 1. Cập nhật và cài đặt SSH
     - name: Update and install packages
       run: |
-        sudo apt update && sudo apt install -y wget curl unzip openssh-server
+        sudo apt update && sudo apt install -y wget curl unzip openssh-server ufw
+        sudo service ssh start
 
+    # 2. Tạo user đăng nhập SSH
     - name: Create user tuan
       run: |
         sudo useradd -m tuan
@@ -21,22 +24,31 @@ jobs:
         sudo service ssh restart
         echo "SSH sẵn sàng với username: tuan và password: tuan123"
 
+    # 3. Mở port tường lửa
+    - name: Configure firewall
+      run: |
+        sudo ufw allow 22
+        sudo ufw allow 443
+        sudo ufw --force enable
+
+    # 4. Cài đặt Cloudflared
     - name: Install Cloudflared
       run: |
         wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
         sudo dpkg -i cloudflared-linux-amd64.deb
 
+    # 5. Khởi chạy Cloudflare Tunnel
     - name: Start Cloudflare Tunnel for SSH
       run: |
         echo "🚀 Đang khởi chạy Cloudflare Tunnel..."
-        nohup cloudflared tunnel --no-autoupdate --protocol http2 --url tcp://localhost:22 > tunnel.log 2>&1 &
-        sleep 15
+        nohup cloudflared tunnel --no-autoupdate --url tcp://localhost:22 --protocol auto > tunnel.log 2>&1 &
+        sleep 10
         echo "===== Nội dung tunnel.log ====="
         cat tunnel.log
-        echo ""
         echo "===== Link SSH Public ====="
-        grep -Eo "https://[a-zA-Z0-9.-]+\.trycloudflare\.com" tunnel.log || echo "❌ Không tìm thấy link, kiểm tra tunnel.log"
+        grep -Eo "https://[a-zA-Z0-9.-]+.trycloudflare.com" tunnel.log
 
+    # 6. Giữ VPS hoạt động 6 tiếng
     - name: Keep VPS Alive
       run: |
         echo "VPS đang chạy trong 6 tiếng..."
