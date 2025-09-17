@@ -7,26 +7,28 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 350 # VPS tối đa 6 tiếng
+    timeout-minutes: 350 # VPS chạy tối đa 6 tiếng
 
     steps:
+    # Bước 1: Checkout repo
     - name: Checkout Repo
       uses: actions/checkout@v3
 
+    # Bước 2: Update & cài gói cần thiết
     - name: Update & Install Packages
       run: |
         sudo apt update && sudo apt upgrade -y
         sudo apt install curl wget git unzip tmux -y
         echo "✅ Hệ thống đã sẵn sàng!"
 
-    # Cài đặt Cloudflare Tunnel
+    # Bước 3: Cài đặt Cloudflare Tunnel
     - name: Install Cloudflare Tunnel
       run: |
         wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
         sudo dpkg -i cloudflared-linux-amd64.deb
         echo "✅ Cloudflare Tunnel đã được cài đặt!"
 
-    # Tạo user "tuan" và cài SSH server
+    # Bước 4: Cài SSH Server và tạo user tuan
     - name: Setup SSH with custom user
       run: |
         sudo apt install openssh-server -y
@@ -38,17 +40,21 @@ jobs:
         sudo service ssh restart
         echo "✅ SSH đã sẵn sàng! Username: tuan | Password: tuan123"
 
-    # Chạy Cloudflare Tunnel để mở kết nối SSH
+    # Bước 5: Chạy Cloudflare Tunnel để mở kết nối SSH
     - name: Start Cloudflare Tunnel for SSH
       run: |
-        nohup cloudflared tunnel --url ssh://localhost:22 --no-autoupdate > tunnel.log 2>&1 &
-        sleep 5
-        echo "🔗 Địa chỉ SSH của bạn:"
-        cat tunnel.log | grep -o 'tcp://[0-9a-zA-Z\.\-]*trycloudflare.com:[0-9]*' || echo "Không tìm thấy link, kiểm tra lại log!"
+        echo "🔄 Đang khởi chạy Cloudflare Tunnel..."
+        nohup cloudflared tunnel --url tcp://localhost:22 --no-autoupdate > tunnel.log 2>&1 &
+        sleep 8
+        echo "🔗 Địa chỉ SSH của bạn (copy đầy đủ dòng bên dưới để kết nối):"
+        cat tunnel.log | grep -o 'tcp://[0-9a-zA-Z\.\-]*trycloudflare.com:[0-9]*' || echo "⚠️ Không tìm thấy link, hãy xem nội dung log bên dưới:"
+        echo "===== Nội dung tunnel.log ====="
+        cat tunnel.log
+        echo "=============================="
 
-    # Giữ VPS online 6 tiếng
+    # Bước 6: Giữ VPS hoạt động trong 6 tiếng
     - name: Keep VPS Alive
       run: |
-        echo "VPS đang chạy trong 6 tiếng..."
+        echo "⏳ VPS đang chạy trong 6 tiếng..."
         tmux new -d -s keepalive 'while true; do sleep 30; done'
         sleep 21600
