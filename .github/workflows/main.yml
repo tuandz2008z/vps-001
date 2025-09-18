@@ -9,6 +9,9 @@ jobs:
     timeout-minutes: 9999
 
     steps:
+    - name: Kiểm tra user hiện tại
+      run: net user
+
     - name: Setup RDP Environment
       run: |
         echo "===== Bật RDP và cấu hình firewall ====="
@@ -17,14 +20,12 @@ jobs:
         reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v UserAuthentication /t REG_DWORD /d 0 /f
 
         echo "===== Đổi password user ====="
-        net user runner Rdp@12345
+        net user runneradmin Rdp@12345
 
     - name: Download Cloudflared
       run: |
-        echo "===== Tải Cloudflared ====="
         curl -L -o cloudflared.exe https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
 
     - name: Run Cloudflare Tunnel
       run: |
-        echo "===== Khởi chạy Cloudflare Tunnel ====="
         ./cloudflared.exe tunnel --url tcp://localhost:3389 --no-autoupdate --protocol quic
