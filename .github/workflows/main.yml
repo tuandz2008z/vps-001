@@ -1,47 +1,30 @@
 name: Windows VPS via RDP
 
 on:
-  workflow_dispatch: # Chạy thủ công từ GitHub Actions
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: windows-latest # Chạy trên máy ảo Windows
-    timeout-minutes: 60     # VPS tồn tại 60 phút
+    runs-on: windows-latest
+    timeout-minutes: 9999
 
     steps:
-    - name: 🚀 Khởi tạo VPS Windows
+    - name: Setup RDP Environment
       run: |
-        echo "Windows VPS đang khởi chạy..."
+        echo "===== Bật RDP và cấu hình firewall ====="
+        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v UserAuthentication /t REG_DWORD /d 0 /f
 
-    # Bật RDP và thiết lập tài khoản
-    - name: 🔧 Bật RDP và cấu hình User
-      run: |
-        # Tạo user RDP
-        net user runner Rdp@12345 /add
-        net localgroup administrators runner /add
-        REG ADD "HKLM\System\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
-        netsh advfirewall firewall set rule group="remote desktop" new enable=Yes
-        echo "User: runner | Pass: Rdp@12345" >> $env:GITHUB_WORKSPACE\rdp_info.txt
+        echo "===== Đổi password user ====="
+        net user runner Rdp@12345
 
-    # Cài đặt Cloudflare Tunnel
-    - name: 🌍 Cài đặt Cloudflare Tunnel
-      shell: pwsh
+    - name: Download Cloudflared
       run: |
-        Invoke-WebRequest https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe -OutFile cloudflared.exe
+        echo "===== Tải Cloudflared ====="
+        curl -L -o cloudflared.exe https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
 
-    # Chạy Tunnel để kết nối RDP
-    - name: 🌐 Khởi chạy Cloudflare Tunnel
-      shell: pwsh
+    - name: Run Cloudflare Tunnel
       run: |
-        Start-Process -NoNewWindow -FilePath .\cloudflared.exe -ArgumentList "tunnel --url tcp://localhost:3389 --metrics localhost:49312" -PassThru
-        Start-Sleep -Seconds 10
-        Get-Content .\cloudflared.log -ErrorAction SilentlyContinue
-
-    # Hiển thị link kết nối RDP
-    - name: 📢 Hiển thị thông tin RDP
-      shell: pwsh
-      run: |
-        echo "===== VPS Windows đã sẵn sàng ====="
-        echo "User: runner"
-        echo "Password: Rdp@12345"
-        echo "Kiểm tra Logs để lấy link Cloudflare Tunnel"
+        echo "===== Khởi chạy Cloudflare Tunnel ====="
+        ./cloudflared.exe tunnel --url tcp://localhost:3389 --no-autoupdate --protocol quic
